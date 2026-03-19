@@ -4,10 +4,23 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PDF Watermark Tool – With Preview</title>
+  
+  <!-- pdf-lib for watermarking -->
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  
+  <!-- pdf.js for preview -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.7.432/pdf.min.mjs" type="module"></script>
+
   <style>
-    body { font-family: system-ui, sans-serif; background: #0f0f17; color: #e0e0ff; padding: 20px; max-width: 900px; margin: auto; text-align: center; }
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f0f17;
+      color: #e0e0ff;
+      padding: 20px;
+      max-width: 900px;
+      margin: auto;
+      text-align: center;
+    }
     h1 { color: #a5b4fc; }
     .container { background: #1e1e38; padding: 25px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
     .upload-area { background: #25253a; border: 2px dashed #6366f1; border-radius: 10px; padding: 30px; margin: 20px 0; }
@@ -15,30 +28,32 @@
     button { background: #6366f1; color: white; border: none; padding: 12px 24px; font-size: 1.05rem; border-radius: 8px; margin: 10px 6px; cursor: pointer; }
     button:hover { background: #4f46e5; }
     button:disabled { background: #444; cursor: not-allowed; }
+    #previewOriginalBtn { background: #10b981; }
+    #previewOriginalBtn:hover { background: #059669; }
     #addWatermarkBtn { background: #ec4899; }
     #addWatermarkBtn:hover { background: #db2777; }
-    #status { margin: 20px 0; font-size: 1.1rem; }
+    #status { margin: 20px 0; font-size: 1.1rem; min-height: 1.4em; }
     .success { color: #10b981; }
-    .error   { color: #ef4444; }
-    .info    { color: #fbbf24; }
+    .error { color: #ef4444; }
+    .info { color: #fbbf24; }
     input, select { padding: 8px 12px; margin: 6px; background: #2d2d4a; color: white; border: 1px solid #6366f1; border-radius: 6px; }
     .section { background: #25253a; padding: 18px; border-radius: 10px; margin: 20px 0; }
-    #previewContainer { margin-top: 30px; display: none; }
-    #previewCanvas { max-width: 100%; border: 2px solid #6366f1; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
+    #previewContainer { margin-top: 30px; display: none; border: 1px solid #6366f1; padding: 10px; border-radius: 8px; background: #1e1e38; }
+    #previewCanvas { max-width: 100%; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
   </style>
 </head>
 <body>
 
   <h1>PDF Watermark Tool – With Preview</h1>
-  <p style="color:#94a3b8;">Add text/image watermark • See original first page preview</p>
+  <p style="color:#94a3b8;">Upload PDF • Preview first page • Add text/image watermark • Download</p>
 
   <div class="container">
     <div class="upload-area">
-      <p>Select PDF:</p>
+      <p>Select your PDF:</p>
       <input type="file" id="pdfInput" accept="application/pdf">
     </div>
 
-    <div id="file-info" style="display:none;">
+    <div id="file-info" style="display:none; margin:20px 0;">
       <strong>File:</strong> <span id="file-name"></span><br>
       <strong>Pages:</strong> <span id="page-count"></span>
     </div>
@@ -65,7 +80,7 @@
     </div>
 
     <div class="section">
-      <h3>Image Watermark (optional)</h3>
+      <h3>Image Watermark (optional – PNG with transparency best)</h3>
       <input type="file" id="watermarkImageInput" accept="image/*"><br><br>
       Scale (%): <input type="number" id="imageScale" value="50" min="10" max="200"><br>
       Opacity: <input type="number" id="imageOpacity" value="0.4" step="0.05"><br><br>
@@ -85,7 +100,7 @@
     <div id="status"></div>
 
     <div id="previewContainer">
-      <h3>Preview of first page (before watermark)</h3>
+      <h3>Preview of First Page (before watermark)</h3>
       <canvas id="previewCanvas"></canvas>
     </div>
   </div>
@@ -108,12 +123,12 @@
     pdfInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file || file.type !== 'application/pdf') {
-        status.textContent = 'Select a PDF file';
+        status.textContent = 'Please select a PDF file';
         status.className = 'error';
         return;
       }
 
-      status.textContent = 'Loading...';
+      status.textContent = 'Loading PDF...';
       status.className = 'info';
 
       try {
@@ -130,24 +145,28 @@
         previewBtn.disabled = false;
         addBtn.disabled = false;
 
-        status.textContent = 'PDF ready!';
+        status.textContent = 'PDF loaded successfully – ready for preview/watermark';
         status.className = 'success';
       } catch (err) {
-        status.textContent = 'Error loading PDF';
+        status.textContent = 'Error loading PDF – try another file';
         status.className = 'error';
-        console.error(err);
+        console.error('Load error:', err);
       }
     });
 
     previewBtn.onclick = async () => {
-      if (!pdfjsDoc) return;
+      if (!pdfjsDoc) {
+        status.textContent = 'No PDF loaded yet';
+        status.className = 'error';
+        return;
+      }
 
-      status.textContent = 'Generating preview...';
+      status.textContent = 'Rendering preview...';
       status.className = 'info';
 
       try {
         const page = await pdfjsDoc.getPage(1);
-        const scale = 1.5;
+        const scale = 1.8; // higher for better quality
         const viewport = page.getViewport({ scale });
 
         previewCanvas.width = viewport.width;
@@ -160,28 +179,33 @@
         }).promise;
 
         previewCont.style.display = 'block';
-        status.textContent = 'Preview shown!';
+        status.textContent = 'Preview ready (first page only)';
         status.className = 'success';
       } catch (err) {
-        status.textContent = 'Preview failed – download still works';
+        status.textContent = 'Preview failed – check console (F12) for details';
         status.className = 'error';
-        console.error(err);
+        console.error('Preview render error:', err);
       }
     };
 
     addBtn.onclick = async () => {
-      if (!pdfLibDoc) return;
+      if (!pdfLibDoc) {
+        status.textContent = 'No PDF loaded';
+        status.className = 'error';
+        return;
+      }
 
       status.textContent = 'Adding watermark...';
       status.className = 'info';
 
       try {
         const newDoc = await PDFLib.PDFDocument.create();
-        const pages = await newDoc.copyPages(pdfLibDoc, pdfLibDoc.getPageIndices());
-        pages.forEach(p => newDoc.addPage(p));
+        const copiedPages = await newDoc.copyPages(pdfLibDoc, pdfLibDoc.getPageIndices());
+        copiedPages.forEach(p => newDoc.addPage(p));
 
         const font = await newDoc.embedFont(PDFLib.StandardFonts.Helvetica);
 
+        // Text watermark
         const text = document.getElementById('watermarkText').value.trim();
         if (text) {
           const size = Number(document.getElementById('fontSize').value);
@@ -207,10 +231,15 @@
             if (preset === 'bottom-right') { x = width - 40 - approxW; y = 40; }
             x += offX; y += offY;
 
-            page.drawText(text, { x, y, size, font, color: PDFLib.rgb(r,g,b), opacity, rotate: PDFLib.degrees(rot) });
+            page.drawText(text, {
+              x, y, size, font,
+              color: PDFLib.rgb(r, g, b),
+              opacity, rotate: PDFLib.degrees(rot)
+            });
           }
         }
 
+        // Image watermark
         const imgFile = document.getElementById('watermarkImageInput').files[0];
         if (imgFile) {
           const scale = Number(document.getElementById('imageScale').value) / 100;
@@ -223,7 +252,11 @@
           let img;
           if (imgFile.type === 'image/png') img = await newDoc.embedPng(buf);
           else if (imgFile.type.startsWith('image/jpeg')) img = await newDoc.embedJpg(buf);
-          else return status.textContent = 'Only PNG/JPG for image';
+          else {
+            status.textContent = 'Only PNG or JPG supported for image watermark';
+            status.className = 'error';
+            return;
+          }
 
           const dims = img.scale(scale);
 
@@ -250,12 +283,12 @@
         a.click();
         URL.revokeObjectURL(url);
 
-        status.textContent = 'Downloaded!';
+        status.textContent = 'Watermarked PDF downloaded!';
         status.className = 'success';
       } catch (err) {
-        status.textContent = 'Error – try smaller PDF';
+        status.textContent = 'Error during watermarking – try smaller file';
         status.className = 'error';
-        console.error(err);
+        console.error('Watermark error:', err);
       }
     };
   </script>
