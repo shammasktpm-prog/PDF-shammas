@@ -3,96 +3,87 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PDF Watermark Tool – With Preview</title>
-  
+  <title>PDF Watermark Tool with Position & Original Preview</title>
   <!-- pdf-lib for watermarking -->
   <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  
-  <!-- pdf.js for preview -->
+  <!-- pdf.js for reliable page preview/thumbnail -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.7.432/pdf.min.mjs" type="module"></script>
-
   <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: #0f0f17;
-      color: #e0e0ff;
-      padding: 20px;
-      max-width: 900px;
-      margin: auto;
-      text-align: center;
-    }
+    body { font-family: system-ui, sans-serif; background: #0f0f17; color: #e0e0ff; padding: 30px; max-width: 950px; margin: auto; text-align: center; }
     h1 { color: #a5b4fc; }
-    .container { background: #1e1e38; padding: 25px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
-    .upload-area { background: #25253a; border: 2px dashed #6366f1; border-radius: 10px; padding: 30px; margin: 20px 0; }
-    input[type="file"] { font-size: 1.1rem; padding: 12px; background: #1e1e38; color: white; border: 1px solid #6366f1; border-radius: 8px; cursor: pointer; width: 100%; max-width: 500px; }
-    button { background: #6366f1; color: white; border: none; padding: 12px 24px; font-size: 1.05rem; border-radius: 8px; margin: 10px 6px; cursor: pointer; }
+    .container { background: #1e1e38; padding: 30px; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); }
+    #drop-zone { border: 3px dashed #6366f1; border-radius: 12px; padding: 60px 20px; margin: 25px 0; cursor: pointer; transition: all 0.25s; }
+    #drop-zone:hover, #drop-zone.active { background: rgba(99,102,241,0.12); border-color: #818cf8; }
+    button { background: #6366f1; color: white; border: none; padding: 14px 28px; font-size: 1.1rem; border-radius: 8px; margin: 10px; cursor: pointer; }
     button:hover { background: #4f46e5; }
     button:disabled { background: #444; cursor: not-allowed; }
-    #previewOriginalBtn { background: #10b981; }
-    #previewOriginalBtn:hover { background: #059669; }
     #addWatermarkBtn { background: #ec4899; }
     #addWatermarkBtn:hover { background: #db2777; }
-    #status { margin: 20px 0; font-size: 1.1rem; min-height: 1.4em; }
+    #status { margin: 20px 0; font-size: 1.1rem; min-height: 1.5em; }
     .success { color: #10b981; }
-    .error { color: #ef4444; }
-    .info { color: #fbbf24; }
-    input, select { padding: 8px 12px; margin: 6px; background: #2d2d4a; color: white; border: 1px solid #6366f1; border-radius: 6px; }
-    .section { background: #25253a; padding: 18px; border-radius: 10px; margin: 20px 0; }
-    #previewContainer { margin-top: 30px; display: none; border: 1px solid #6366f1; padding: 10px; border-radius: 8px; background: #1e1e38; }
-    #previewCanvas { max-width: 100%; border-radius: 6px; box-shadow: 0 2px 10px rgba(0,0,0,0.5); }
+    .error   { color: #ef4444; }
+    .info    { color: #fbbf24; }
+    input, select { padding: 10px; margin: 8px; font-size: 1rem; border-radius: 6px; border: 1px solid #6366f1; background: #2d2d4a; color: white; }
+    .section { margin: 25px 0; padding: 15px; background: #25253a; border-radius: 10px; }
+    #previewContainer { margin-top: 30px; display: none; }
+    #previewImg { max-width: 100%; max-height: 600px; border: 2px solid #6366f1; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.6); }
+    label { display: inline-block; margin: 8px 12px; }
   </style>
 </head>
 <body>
 
-  <h1>PDF Watermark Tool – With Preview</h1>
-  <p style="color:#94a3b8;">Upload PDF • Preview first page • Add text/image watermark • Download</p>
+  <h1>PDF Watermark Tool – Custom Position + Original Preview</h1>
+  <p style="color:#94a3b8;">Add text/image watermark • See original first page preview • 100% browser-only</p>
 
   <div class="container">
-    <div class="upload-area">
-      <p>Select your PDF:</p>
-      <input type="file" id="pdfInput" accept="application/pdf">
+    <div id="drop-zone">
+      <p>Click or drag & drop your PDF here</p>
     </div>
 
     <div id="file-info" style="display:none; margin:20px 0;">
       <strong>File:</strong> <span id="file-name"></span><br>
-      <strong>Pages:</strong> <span id="page-count"></span>
+      <strong>Pages:</strong> <span id="page-count">—</span>
     </div>
 
-    <button id="previewOriginalBtn" disabled>Preview First Page (original)</button>
+    <button id="previewOriginalBtn" disabled>Show Original First Page Preview</button>
 
     <div class="section">
       <h3>Text Watermark</h3>
-      Text: <input type="text" id="watermarkText" value="CONFIDENTIAL"><br>
-      Size: <input type="number" id="fontSize" value="72" min="20" max="140"><br>
-      Opacity: <input type="number" id="textOpacity" value="0.3" step="0.05"><br>
-      Rotation (°): <input type="number" id="rotation" value="45"><br>
+      <input type="text" id="watermarkText" placeholder="e.g. CONFIDENTIAL / DRAFT" value="CONFIDENTIAL"><br>
+      Font Size: <input type="number" id="fontSize" min="10" max="150" value="60" style="width:80px;">
+      Opacity: <input type="number" id="textOpacity" min="0.05" max="1" step="0.05" value="0.25" style="width:80px;">
+      Rotation (°): <input type="number" id="rotation" min="-180" max="180" value="45" style="width:80px;">
       Color: <input type="color" id="textColor" value="#ff0000"><br><br>
-      Position: 
+
+      Position Preset:
       <select id="textPositionPreset">
         <option value="center">Center</option>
-        <option value="top-left">Top Left</option>
-        <option value="top-right">Top Right</option>
-        <option value="bottom-left">Bottom Left</option>
-        <option value="bottom-right">Bottom Right</option>
-        <option value="diagonal">Diagonal</option>
+        <option value="top-left">Top-Left</option>
+        <option value="top-right">Top-Right</option>
+        <option value="bottom-left">Bottom-Left</option>
+        <option value="bottom-right">Bottom-Right</option>
+        <option value="diagonal">Diagonal (center + rotation)</option>
       </select><br>
-      Offset X: <input type="number" id="textOffsetX" value="0"> Y: <input type="number" id="textOffsetY" value="0">
+      Offset (points): X <input type="number" id="textOffsetX" value="0" style="width:80px;"> 
+      Y <input type="number" id="textOffsetY" value="0" style="width:80px;">
     </div>
 
     <div class="section">
-      <h3>Image Watermark (optional – PNG with transparency best)</h3>
-      <input type="file" id="watermarkImageInput" accept="image/*"><br><br>
-      Scale (%): <input type="number" id="imageScale" value="50" min="10" max="200"><br>
-      Opacity: <input type="number" id="imageOpacity" value="0.4" step="0.05"><br><br>
-      Position: 
+      <h3>Image Watermark (PNG/JPG – transparency recommended)</h3>
+      <input type="file" id="watermarkImageInput" accept="image/*"><br>
+      Scale (%): <input type="number" id="imageScale" min="5" max="300" value="40" style="width:80px;">
+      Opacity: <input type="number" id="imageOpacity" min="0.05" max="1" step="0.05" value="0.35" style="width:80px;"><br><br>
+
+      Position Preset:
       <select id="imagePositionPreset">
         <option value="center">Center</option>
-        <option value="top-left">Top Left</option>
-        <option value="top-right">Top Right</option>
-        <option value="bottom-left">Bottom Left</option>
-        <option value="bottom-right">Bottom Right</option>
+        <option value="top-left">Top-Left</option>
+        <option value="top-right">Top-Right</option>
+        <option value="bottom-left">Bottom-Left</option>
+        <option value="bottom-right">Bottom-Right</option>
       </select><br>
-      Offset X: <input type="number" id="imageOffsetX" value="0"> Y: <input type="number" id="imageOffsetY" value="0">
+      Offset (points): X <input type="number" id="imageOffsetX" value="0" style="width:80px;"> 
+      Y <input type="number" id="imageOffsetY" value="0" style="width:80px;">
     </div>
 
     <button id="addWatermarkBtn" disabled>Add Watermark & Download</button>
@@ -100,8 +91,8 @@
     <div id="status"></div>
 
     <div id="previewContainer">
-      <h3>Preview of First Page (before watermark)</h3>
-      <canvas id="previewCanvas"></canvas>
+      <h3>Original First Page Preview (before watermark)</h3>
+      <canvas id="previewCanvas"></canvas> <!-- Using canvas for pdf.js render -->
     </div>
   </div>
 
@@ -109,188 +100,179 @@
     import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.7.432/pdf.min.mjs';
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.7.432/pdf.worker.min.mjs';
 
-    const pdfInput = document.getElementById('pdfInput');
-    const previewBtn = document.getElementById('previewOriginalBtn');
-    const addBtn = document.getElementById('addWatermarkBtn');
-    const status = document.getElementById('status');
-    const previewCanvas = document.getElementById('previewCanvas');
-    const previewCont = document.getElementById('previewContainer');
+    const dropZone       = document.getElementById('drop-zone');
+    const fileNameEl     = document.getElementById('file-name');
+    const pageCountEl    = document.getElementById('page-count');
+    const fileInfo       = document.getElementById('file-info');
+    const status         = document.getElementById('status');
+    const previewBtn     = document.getElementById('previewOriginalBtn');
+    const addBtn         = document.getElementById('addWatermarkBtn');
+    const previewCont    = document.getElementById('previewContainer');
+    const previewCanvas  = document.getElementById('previewCanvas');
 
-    let pdfLibDoc = null;
-    let pdfjsDoc = null;
+    let pdfBytes  = null;
+    let pdfDoc    = null;      // pdf-lib doc
+    let pdfjsDoc  = null;      // pdf.js doc for preview
     let totalPages = 0;
 
-    pdfInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
+    // Drag & drop...
+    ['dragover','dragenter'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('active'); }));
+    ['dragleave','drop'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.remove('active'); }));
+
+    dropZone.addEventListener('drop', handleFile);
+    dropZone.addEventListener('click', () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/pdf';
+      input.onchange = e => handleFile(e);
+      input.click();
+    });
+
+    async function handleFile(e) {
+      const file = (e.target?.files || e.dataTransfer?.files)?.[0];
       if (!file || file.type !== 'application/pdf') {
-        status.textContent = 'Please select a PDF file';
-        status.className = 'error';
+        showStatus('Please select a PDF file', 'error');
         return;
       }
 
-      status.textContent = 'Loading PDF...';
-      status.className = 'info';
+      const arrayBuffer = await file.arrayBuffer();
+      pdfBytes = new Uint8Array(arrayBuffer);
 
       try {
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        pdfLibDoc = await PDFLib.PDFDocument.load(bytes);
-        totalPages = pdfLibDoc.getPageCount();
+        pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+        totalPages = pdfDoc.getPageCount();
 
-        pdfjsDoc = await pdfjsLib.getDocument({ data: bytes }).promise;
+        pdfjsDoc = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
 
-        document.getElementById('file-name').textContent = file.name;
-        document.getElementById('page-count').textContent = totalPages;
-        document.getElementById('file-info').style.display = 'block';
+        fileNameEl.textContent = file.name;
+        pageCountEl.textContent = totalPages;
+        fileInfo.style.display = 'block';
 
         previewBtn.disabled = false;
         addBtn.disabled = false;
 
-        status.textContent = 'PDF loaded successfully – ready for preview/watermark';
-        status.className = 'success';
+        showStatus(`PDF loaded – ${totalPages} page(s)`, 'success');
       } catch (err) {
-        status.textContent = 'Error loading PDF – try another file';
-        status.className = 'error';
-        console.error('Load error:', err);
+        showStatus('Failed to load PDF – corrupted?', 'error');
+        console.error(err);
       }
-    });
+    }
 
+    function showStatus(msg, type = 'info') {
+      status.textContent = msg;
+      status.className = type;
+    }
+
+    // Show original first page preview using pdf.js
     previewBtn.onclick = async () => {
-      if (!pdfjsDoc) {
-        status.textContent = 'No PDF loaded yet';
-        status.className = 'error';
-        return;
-      }
+      if (!pdfjsDoc) return showStatus('No PDF loaded', 'error');
 
-      status.textContent = 'Rendering preview...';
-      status.className = 'info';
+      showStatus('Rendering preview...', 'info');
 
-      try {
-        const page = await pdfjsDoc.getPage(1);
-        const scale = 1.8; // higher for better quality
-        const viewport = page.getViewport({ scale });
+      const page = await pdfjsDoc.getPage(1);
+      const scale = 1.5;
+      const viewport = page.getViewport({ scale });
 
-        previewCanvas.width = viewport.width;
-        previewCanvas.height = viewport.height;
+      previewCanvas.height = viewport.height;
+      previewCanvas.width = viewport.width;
 
-        const context = previewCanvas.getContext('2d');
-        await page.render({
-          canvasContext: context,
-          viewport: viewport
-        }).promise;
+      const context = previewCanvas.getContext('2d');
+      const renderContext = { canvasContext: context, viewport };
+      await page.render(renderContext).promise;
 
-        previewCont.style.display = 'block';
-        status.textContent = 'Preview ready (first page only)';
-        status.className = 'success';
-      } catch (err) {
-        status.textContent = 'Preview failed – check console (F12) for details';
-        status.className = 'error';
-        console.error('Preview render error:', err);
-      }
+      previewCont.style.display = 'block';
+      showStatus('Original first page preview shown ↑', 'success');
     };
 
-    addBtn.onclick = async () => {
-      if (!pdfLibDoc) {
-        status.textContent = 'No PDF loaded';
-        status.className = 'error';
-        return;
+    // Watermark function (unchanged core logic)
+    async function addWatermarksAndDownload() {
+      if (!pdfDoc) return showStatus('No PDF loaded', 'error');
+
+      showStatus('Adding watermark(s)...', 'info');
+
+      const newDoc = await PDFLib.PDFDocument.create();
+      const copiedPages = await newDoc.copyPages(pdfDoc, pdfDoc.getPageIndices());
+      copiedPages.forEach(p => newDoc.addPage(p));
+      const pages = newDoc.getPages();
+
+      const helveticaFont = await newDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+
+      // Text watermark...
+      const text = document.getElementById('watermarkText').value.trim();
+      if (text) {
+        const fontSize = Number(document.getElementById('fontSize').value);
+        const opacity = Number(document.getElementById('textOpacity').value);
+        const rotation = Number(document.getElementById('rotation').value);
+        const colorHex = document.getElementById('textColor').value;
+        const r = parseInt(colorHex.slice(1,3),16)/255;
+        const g = parseInt(colorHex.slice(3,5),16)/255;
+        const b = parseInt(colorHex.slice(5,7),16)/255;
+
+        const preset = document.getElementById('textPositionPreset').value;
+        const offsetX = Number(document.getElementById('textOffsetX').value);
+        const offsetY = Number(document.getElementById('textOffsetY').value);
+
+        for (const page of pages) {
+          const { width, height } = page.getSize();
+          const textWidthApprox = text.length * fontSize * 0.55;
+          let { x, y } = getPositionPreset(preset, width, height, textWidthApprox, fontSize);
+          x += offsetX; y += offsetY;
+
+          page.drawText(text, { x, y, size: fontSize, font: helveticaFont, color: PDFLib.rgb(r,g,b), opacity, rotate: PDFLib.degrees(rotation) });
+        }
       }
 
-      status.textContent = 'Adding watermark...';
-      status.className = 'info';
+      // Image watermark...
+      const imageFile = document.getElementById('watermarkImageInput').files[0];
+      if (imageFile) {
+        const scale = Number(document.getElementById('imageScale').value) / 100;
+        const opacity = Number(document.getElementById('imageOpacity').value);
 
-      try {
-        const newDoc = await PDFLib.PDFDocument.create();
-        const copiedPages = await newDoc.copyPages(pdfLibDoc, pdfLibDoc.getPageIndices());
-        copiedPages.forEach(p => newDoc.addPage(p));
+        const arrayBuffer = await imageFile.arrayBuffer();
+        let image;
+        if (imageFile.type === 'image/png') image = await newDoc.embedPng(arrayBuffer);
+        else if (imageFile.type.startsWith('image/jpeg')) image = await newDoc.embedJpg(arrayBuffer);
+        else return showStatus('Only PNG/JPG for image watermark', 'error');
 
-        const font = await newDoc.embedFont(PDFLib.StandardFonts.Helvetica);
+        const dims = image.scale(scale);
 
-        // Text watermark
-        const text = document.getElementById('watermarkText').value.trim();
-        if (text) {
-          const size = Number(document.getElementById('fontSize').value);
-          const opacity = Number(document.getElementById('textOpacity').value);
-          const rot = Number(document.getElementById('rotation').value);
-          const colorHex = document.getElementById('textColor').value;
-          const r = parseInt(colorHex.slice(1,3),16)/255;
-          const g = parseInt(colorHex.slice(3,5),16)/255;
-          const b = parseInt(colorHex.slice(5,7),16)/255;
+        const preset = document.getElementById('imagePositionPreset').value;
+        const offsetX = Number(document.getElementById('imageOffsetX').value);
+        const offsetY = Number(document.getElementById('imageOffsetY').value);
 
-          const preset = document.getElementById('textPositionPreset').value;
-          const offX = Number(document.getElementById('textOffsetX').value);
-          const offY = Number(document.getElementById('textOffsetY').value);
+        for (const page of pages) {
+          const { width, height } = page.getSize();
+          let { x, y } = getPositionPreset(preset, width, height, dims.width, dims.height);
+          x += offsetX; y += offsetY;
 
-          for (const page of newDoc.getPages()) {
-            const { width, height } = page.getSize();
-            const approxW = text.length * size * 0.6;
-            let x = width / 2 - approxW / 2;
-            let y = height / 2 - size / 2;
-            if (preset === 'top-left') { x = 40; y = height - 80 - size; }
-            if (preset === 'top-right') { x = width - 40 - approxW; y = height - 80 - size; }
-            if (preset === 'bottom-left') { x = 40; y = 40; }
-            if (preset === 'bottom-right') { x = width - 40 - approxW; y = 40; }
-            x += offX; y += offY;
-
-            page.drawText(text, {
-              x, y, size, font,
-              color: PDFLib.rgb(r, g, b),
-              opacity, rotate: PDFLib.degrees(rot)
-            });
-          }
+          page.drawImage(image, { x, y, width: dims.width, height: dims.height, opacity });
         }
-
-        // Image watermark
-        const imgFile = document.getElementById('watermarkImageInput').files[0];
-        if (imgFile) {
-          const scale = Number(document.getElementById('imageScale').value) / 100;
-          const opacity = Number(document.getElementById('imageOpacity').value);
-          const preset = document.getElementById('imagePositionPreset').value;
-          const offX = Number(document.getElementById('imageOffsetX').value);
-          const offY = Number(document.getElementById('imageOffsetY').value);
-
-          const buf = await imgFile.arrayBuffer();
-          let img;
-          if (imgFile.type === 'image/png') img = await newDoc.embedPng(buf);
-          else if (imgFile.type.startsWith('image/jpeg')) img = await newDoc.embedJpg(buf);
-          else {
-            status.textContent = 'Only PNG or JPG supported for image watermark';
-            status.className = 'error';
-            return;
-          }
-
-          const dims = img.scale(scale);
-
-          for (const page of newDoc.getPages()) {
-            const { width, height } = page.getSize();
-            let x = width / 2 - dims.width / 2;
-            let y = height / 2 - dims.height / 2;
-            if (preset === 'top-left') { x = 40; y = height - 80 - dims.height; }
-            if (preset === 'top-right') { x = width - 40 - dims.width; y = height - 80 - dims.height; }
-            if (preset === 'bottom-left') { x = 40; y = 40; }
-            if (preset === 'bottom-right') { x = width - 40 - dims.width; y = 40; }
-            x += offX; y += offY;
-
-            page.drawImage(img, { x, y, width: dims.width, height: dims.height, opacity });
-          }
-        }
-
-        const pdfBytes = await newDoc.save();
-        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'watermarked.pdf';
-        a.click();
-        URL.revokeObjectURL(url);
-
-        status.textContent = 'Watermarked PDF downloaded!';
-        status.className = 'success';
-      } catch (err) {
-        status.textContent = 'Error during watermarking – try smaller file';
-        status.className = 'error';
-        console.error('Watermark error:', err);
       }
-    };
+
+      const modifiedBytes = await newDoc.save();
+      const blob = new Blob([modifiedBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'watermarked-' + (document.getElementById('file-name').textContent || 'document.pdf');
+      a.click();
+      URL.revokeObjectURL(url);
+
+      showStatus('Watermarked PDF downloaded!', 'success');
+    }
+
+    function getPositionPreset(preset, w, h, itemW = 0, itemH = 0) {
+      let x = w / 2 - itemW / 2;
+      let y = h / 2 - itemH / 2;
+      if (preset === 'top-left')     { x = 50; y = h - 100 - itemH; }
+      if (preset === 'top-right')    { x = w - 50 - itemW; y = h - 100 - itemH; }
+      if (preset === 'bottom-left')  { x = 50; y = 50; }
+      if (preset === 'bottom-right') { x = w - 50 - itemW; y = 50; }
+      if (preset === 'diagonal')     { /* center + rotation does diagonal effect */ }
+      return { x, y };
+    }
+
+    addBtn.onclick = addWatermarksAndDownload;
   </script>
 </body>
 </html>
